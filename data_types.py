@@ -10,11 +10,12 @@ class Course:
         return f'Course<{self.term} {self.year} - {self.code} - {self.name}>'
 
 class Component:
-    def __init__(self, id, cmp_type, type, section, status, capacity, times):
+    def __init__(self, id, cmp_type, type, section, status, filled, maximum, times):
         self.id = id
         self.cmp_type = cmp_type
         self.type = type
         self.section = section
         self.status = status
-        self.capacity = capacity
+        self.filled = filled
+        self.maximum = maximum
         self.times = times

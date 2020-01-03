@@ -1,30 +1,48 @@
 import sqlite3
 from os import path, system
 
-def create_db(filename):
-    fp = f'data/{filename}'
-    if path.exists(fp):
-        raise FileExistsError("data has not been updated")
-    system('mkdir -p data')
+DB_CLASSUTIL = 'classutil.db'
 
-    conn = sqlite3.connect(f'data/{filename}')
+def get_database():
+    conn = sqlite3.connect(DB_CLASSUTIL)
     # create tables
     c = conn.cursor()
+
+    # database already created
+    if c.execute('SELECT COUNT() FROM sqlite_master WHERE type=\'table\' AND name=\'updates\'').fetchone()[0] != 0:
+        c.close()
+        return conn
+
+    c.execute('''CREATE TABLE updates (
+              id            INTEGER PRIMARY KEY AUTOINCREMENT,
+              time          TIMESTAMP)''')
+
     c.execute('''CREATE TABLE courses (
               id    INTEGER PRIMARY KEY AUTOINCREMENT,
               code  VARCHAR(8),
               name  VARCHAR(255),
               term  VARCHAR(2),
-              year  INTEGER)''')
-    c.execute('''CREATE TABLE components(
-              component_id  INTEGER,
+              year  INTEGER,
+              UNIQUE(code, term, year))''')
+
+    c.execute('''CREATE TABLE components (
+              id            INTEGER PRIMARY KEY AUTOINCREMENT,
+              unsw_id       INTEGER,
               course_id     INTEGER,
               cmp_type      VARCHAR(3),
               type          VARCHAR(4),
               section       VARCHAR(4),
+              times         VARCHAR(255),
+              UNIQUE(unsw_id, course_id))''')
+
+    c.execute('''CREATE TABLE capacities (
+              component_id  INTEGER,
+              update_id     INTEGER,
               status        VARCHAR(6),
-              capacity      VARCHAR(10),
-              times         VARCHAR(255))''')
+              filled        INTEGER,
+              maximum       INTEGER)''')
+
+
     c.close()
 
     return conn

@@ -2,7 +2,7 @@ import os
 import re
 import requests
 from bs4 import BeautifulSoup
-from db import create_db
+from db import get_database
 from data_types import Course, Component
 from dateutil import parser
 import sys
@@ -76,20 +76,48 @@ def do_scrape(file):
 
         elif 'class' in i.attrs and (i['class'][0].startswith('row') or i['class'][0] == 'stub'):
             comp, sect, cid, typ, status, cap, _, times = map(lambda x: x.text.strip(), i.find_all('td'))
-            component = Component(int(cid), comp, typ, sect, status, cap, times)
+            res = re.search(r'(\d+)/(\d+)', cap)
+            if res != None:
+                filled = res[1]
+                maximum = res[2]
+            else:
+                filled = 0
+                maximum = 0
+            component = Component(int(cid), comp, typ, sect, status, filled, maximum, times)
             course.components.append(component)
 
     return courses
 
-def do_insert(data, db):
+def do_update(data, correct_dt, db):
     c = db.cursor()
+
+    c.execute('INSERT INTO updates (time) VALUES (?)', (correct_dt, ))
+    update_id = c.lastrowid
+
     for fac in data:
         for course in fac:
-            c.execute('INSERT INTO courses (code, name, term, year) VALUES(?,?,?,?)', (course.code, course.name, course.term, course.year))
-            course_id = c.lastrowid
+            # check to see if course exists
+            c.execute('SELECT id FROM courses WHERE code=? AND term=? AND year=? LIMIT 1', (course.code, course.term, course.year))
+            res = c.fetchone()
+            if res == None:
+                c.execute('INSERT INTO courses (code, name, term, year) VALUES(?,?,?,?)', (course.code, course.name, course.term, course.year))
+                course_id = c.lastrowid
+            else:
+                course_id = res[0]
+
             for cmp in course.components:
-                c.execute('INSERT INTO components (course_id, component_id, cmp_type, type, section, status, capacity, times) VALUES (?,?,?,?,?,?,?,?)',
-                          (course_id, cmp.id, cmp.cmp_type, cmp.type, cmp.section, cmp.status, cmp.capacity, cmp.times))
+                # check if component has been created
+                c.execute('SELECT id FROM components WHERE unsw_id=? AND course_id=? LIMIT 1', (cmp.id, course_id))
+                res = c.fetchone()
+                if res == None:
+                    c.execute('INSERT INTO components(course_id, unsw_id, cmp_type, type, section, times) VALUES (?,?,?,?,?,?)',
+                              (course_id, cmp.id, cmp.cmp_type, cmp.type, cmp.section, cmp.times))
+                    cmp_id = c.lastrowid
+                else:
+                    cmp_id = res[0]
+
+                c.execute('INSERT INTO capacities (component_id, update_id, status, filled, maximum) VALUES (?,?,?,?,?)',
+                          (cmp_id, update_id, cmp.status, cmp.filled, cmp.maximum))
     c.close()
     db.commit()
 
@@ -99,11 +127,21 @@ if __name__ == '__main__':
     files = re.findall(r'[A-Z]{4}_[TU]\d\.html', r.text)
     correct = re.search('correct as at <strong>(.*)</strong>', r.text).group(1)
     correct_dt = int(parser.parse(correct).timestamp())
-    db = create_db(f'classutil-{correct_dt}.db')
+    db = get_database()
+
+    c = db.cursor()
+    # check if classutil data has been updated
+    if c.execute('SELECT COUNT() FROM updates WHERE time=?', (correct_dt, )).fetchone()[0] != 0:
+        log('classutil data has not been updated yet')
+        log(f'last update: {correct}')
+        c.close()
+        sys.exit(0)
+
+    c.close()
 
     pool = ThreadPool(CONCURRENCY)
 
     res = pool.map(do_scrape, files)
-    do_insert(res, db)
+    do_update(res, correct_dt, db)
     db.close()
 

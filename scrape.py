@@ -114,6 +114,7 @@ def do_update(data, correct_dt, db):
                               (course_id, cmp.id, cmp.cmp_type, cmp.type, cmp.section, cmp.times))
                     cmp_id = c.lastrowid
                 else:
+                    c.execute('UPDATE components SET times=? WHERE id=?', (cmp.times, res[0]))
                     cmp_id = res[0]
 
                 c.execute('INSERT INTO capacities (component_id, update_id, status, filled, maximum) VALUES (?,?,?,?,?)',

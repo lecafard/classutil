@@ -1,9 +1,10 @@
 import sqlite3
-from os import path, system
+from os import system
 
-DB_CLASSUTIL = 'classutil.db'
+DB_CLASSUTIL = 'data/classutil.db'
 
 def get_database():
+    system('mkdir -p data')
     conn = sqlite3.connect(DB_CLASSUTIL)
     # create tables
     c = conn.cursor()

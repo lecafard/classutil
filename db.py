@@ -24,7 +24,8 @@ def get_database():
               name  VARCHAR(255),
               term  VARCHAR(2),
               year  INTEGER,
-              UNIQUE(code, term, year))''')
+              UNIQUE(code, year, term))''')
+    c.execute('CREATE INDEX idx_courses_year_term ON courses (year, term)')
 
     c.execute('''CREATE TABLE components (
               id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +43,7 @@ def get_database():
               status        VARCHAR(6),
               filled        INTEGER,
               maximum       INTEGER)''')
-
+    c.execute('CREATE INDEX idx_capacities_component_id ON capacities (component_id)')
 
     c.close()
 

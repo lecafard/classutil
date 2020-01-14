@@ -24,7 +24,7 @@ def get_database():
               name  VARCHAR(255),
               term  VARCHAR(2),
               year  INTEGER,
-              UNIQUE(code, year, term))''')
+              UNIQUE(year, term, code))''')
     c.execute('CREATE INDEX idx_courses_year_term ON courses (year, term)')
 
     c.execute('''CREATE TABLE components (
@@ -35,7 +35,7 @@ def get_database():
               type          VARCHAR(4),
               section       VARCHAR(4),
               times         VARCHAR(255),
-              UNIQUE(unsw_id, course_id))''')
+              UNIQUE(course_id, unsw_id))''')
 
     c.execute('''CREATE TABLE capacities (
               component_id  INTEGER,

@@ -11,6 +11,9 @@ from multiprocessing.pool import ThreadPool
 ROOT_URI = 'http://classutil.unsw.edu.au/'
 CONCURRENCY = 8
 
+if len(sys.argv) > 1:
+    ROOT_URI = sys.argv[1]
+
 def do_scrape(file):
     log(f'Getting {file}')
     courses = []
@@ -125,8 +128,8 @@ def do_update(data, correct_dt, db):
 
 if __name__ == '__main__':
     r = requests.get(ROOT_URI)
-    files = re.findall(r'[A-Z]{4}_[TU]\d\.html', r.text)
-    correct = re.search('correct as at <strong>(.*)</strong>', r.text).group(1)
+    files = re.findall(r'[A-Z]{4}_[STU]\d\.html', r.text)
+    correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', r.text).group(1).replace('EST','AEST')
     correct_dt = int(parser.parse(correct).timestamp())
     db = get_database()
 

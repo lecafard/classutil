@@ -97,7 +97,7 @@ def do_update(data, correct_dt, db):
 if __name__ == '__main__':
     r = requests.get(ROOT_URI)
     files = re.findall(r'[A-Z]{4}_[STU]\d\.html', r.text)
-    correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', r.text).group(1).replace('EST','AEST')
+    correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', r.text).group(1).replace(' EST ',' AEST ')
     correct_dt = int(parser.parse(correct).timestamp())
     db = get_database()
 

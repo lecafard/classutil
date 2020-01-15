@@ -14,39 +14,6 @@ CONCURRENCY = 8
 if len(sys.argv) > 1:
     ROOT_URI = sys.argv[1]
 
-def do_scrape(file):
-    log(f'Getting {file}')
-    courses = []
-
-    req = requests.get(f'{ROOT_URI}{file}')
-    soup = BeautifulSoup(req.text, features='html.parser')
-    term_date = soup.find('p', class_='classSearchMinorHeading').text.split(' - ')[-1]
-
-    term = file[-7:-5]
-    year = term_date.split(" ")[-1]
-
-    table = soup.find_all('table')[2]
-    course_name = ''
-    course_code = ''
-    course = None
-
-    for i in table.find_all('tr'):
-        if i.text == '^ top ^':
-            break
-
-        if_course = i.find_all('td', class_='cucourse')
-        if len(if_course) == 2:
-            course_code = if_course[0].text.strip()
-            course_name = if_course[1].text.strip()
-            course = Course(course_code, course_name, term, year)
-            courses.append(course)
-
-        elif 'class' in i.attrs and (i['class'][0].startswith('row') or i['class'][0] == 'stub'):
-            comp, sect, cid, typ, status, cap, _, times = map(lambda x: x.text.strip(), i.find_all('td'))
-            component = Component(int(cid), comp, typ, sect, status, cap, times)
-            course.components.append(component)
-
-    return courses
 def log(*message):
     print(*message, file=sys.stderr)
 
@@ -56,15 +23,16 @@ def do_scrape(file):
 
     req = requests.get(f'{ROOT_URI}{file}')
     soup = BeautifulSoup(req.text, features='html.parser')
-    term_date = soup.find('p', class_='classSearchMinorHeading').text.split(' - ')[-1]
 
     term = file[-7:-5]
-    year = term_date.split(" ")[-1]
+    year = int(soup.find('title').text.split()[2])
 
-    table = soup.find_all('table')[2]
-    course_name = ''
-    course_code = ''
-    course = None
+    table = None
+
+    for i in soup.find_all('table'):
+        if i.find('td', class_='cucourse'):
+            table = i
+            break
 
     for i in table.find_all('tr'):
         if i.text == '^ top ^':

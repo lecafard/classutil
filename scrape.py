@@ -2,14 +2,13 @@ import os
 import re
 import requests
 from bs4 import BeautifulSoup
-from db import get_database
 from data_types import Course, Component
 from dateutil import parser
 import sys
 from multiprocessing.pool import ThreadPool
 
 ROOT_URI = 'http://classutil.unsw.edu.au/'
-CONCURRENCY = 8
+CONCURRENCY = 4
 
 if len(sys.argv) > 1:
     ROOT_URI = sys.argv[1]
@@ -17,7 +16,7 @@ if len(sys.argv) > 1:
 def log(*message):
     print(*message, file=sys.stderr)
 
-def do_scrape(file):
+def _scrape_course(root, file):
     log(f'Getting {file}')
     courses = []
 
@@ -59,61 +58,18 @@ def do_scrape(file):
 
     return courses
 
-def do_update(data, correct_dt, db):
-    c = db.cursor()
-
-    c.execute('INSERT INTO updates (time) VALUES (?)', (correct_dt, ))
-    update_id = c.lastrowid
-
-    for fac in data:
-        for course in fac:
-            # check to see if course exists
-            c.execute('SELECT id FROM courses WHERE code=? AND term=? AND year=? LIMIT 1', (course.code, course.term, course.year))
-            res = c.fetchone()
-            if res == None:
-                c.execute('INSERT INTO courses (code, name, term, year) VALUES(?,?,?,?)', (course.code, course.name, course.term, course.year))
-                course_id = c.lastrowid
-            else:
-                course_id = res[0]
-
-            for cmp in course.components:
-                # check if component has been created
-                c.execute('SELECT id FROM components WHERE unsw_id=? AND course_id=? LIMIT 1', (cmp.id, course_id))
-                res = c.fetchone()
-                if res == None:
-                    c.execute('INSERT INTO components(course_id, unsw_id, cmp_type, type, section, times) VALUES (?,?,?,?,?,?)',
-                              (course_id, cmp.id, cmp.cmp_type, cmp.type, cmp.section, cmp.times))
-                    cmp_id = c.lastrowid
-                else:
-                    c.execute('UPDATE components SET times=? WHERE id=?', (cmp.times, res[0]))
-                    cmp_id = res[0]
-
-                c.execute('INSERT INTO capacities (component_id, update_id, status, filled, maximum) VALUES (?,?,?,?,?)',
-                          (cmp_id, update_id, cmp.status, cmp.filled, cmp.maximum))
-    c.close()
-    db.commit()
-
-
-if __name__ == '__main__':
-    r = requests.get(ROOT_URI)
+def scrape(root, concurrency):
+    r = requests.get(root)
     files = re.findall(r'[A-Z]{4}_[A-Z]\d\.html', r.text)
     correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', r.text).group(1).replace(' EST ',' AEST ')
     correct_dt = int(parser.parse(correct).timestamp())
-    db = get_database()
+    pool = ThreadPool(concurrency)
 
-    c = db.cursor()
-    # check if classutil data has been updated
-    if c.execute('SELECT COUNT() FROM updates WHERE time=?', (correct_dt, )).fetchone()[0] != 0:
-        log('classutil data has not been updated yet')
-        log(f'last update: {correct}')
-        c.close()
-        sys.exit(0)
+    courses = pool.starmap(_scrape_course, [(root, i) for i in files])
+    return {
+        'courses': courses,
+        'correct_at': correct_dt
+    }
 
-    c.close()
-
-    pool = ThreadPool(CONCURRENCY)
-
-    res = pool.map(do_scrape, files)
-    do_update(res, correct_dt, db)
-    db.close()
-
+if __name__ == '__main__':
+    print(scrape(ROOT_URI, CONCURRENCY))

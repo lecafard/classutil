@@ -9,6 +9,15 @@ class Course:
     def __repr__(self):
         return f'Course<{self.term} {self.year} - {self.code} - {self.name}>'
 
+    def toJSON(self):
+        return {
+            'code': self.code,
+            'name': self.name,
+            'term': self.term,
+            'year': self.year,
+            'components': [i.toJSON() for i in self.components]
+        }
+
 class Component:
     def __init__(self, id, cmp_type, type, section, status, filled, maximum, times):
         self.id = id
@@ -19,3 +28,15 @@ class Component:
         self.filled = filled
         self.maximum = maximum
         self.times = times
+
+    def toJSON(self):
+        return {
+            'id': self.id,
+            'cmp_type': self.cmp_type,
+            'type': self.type,
+            'section': self.section,
+            'status': self.status,
+            'filled': self.filled,
+            'maximum': self.maximum,
+            'times': self.times
+        }

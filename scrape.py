@@ -1,22 +1,23 @@
 import os
 import re
 import requests
+from functools import reduce
 from bs4 import BeautifulSoup
 from data_types import Course, Component
 from dateutil import parser
 import sys
 from multiprocessing.pool import ThreadPool
+import json
+import argparse
+
 
 ROOT_URI = 'http://classutil.unsw.edu.au/'
 CONCURRENCY = 4
 
-if len(sys.argv) > 1:
-    ROOT_URI = sys.argv[1]
-
 def log(*message):
     print(*message, file=sys.stderr)
 
-def _scrape_course(root, file):
+def _scrape_subject(root, file):
     log(f'Getting {file}')
     courses = []
 
@@ -65,11 +66,20 @@ def scrape(root, concurrency):
     correct_dt = int(parser.parse(correct).timestamp())
     pool = ThreadPool(concurrency)
 
-    courses = pool.starmap(_scrape_course, [(root, i) for i in files])
+    courses = pool.starmap(_scrape_subject, [(root, i) for i in files])
     return {
-        'courses': courses,
+        'courses': [i.toJSON() for i in reduce(lambda x, y: x + y, courses)],
         'correct_at': correct_dt
     }
 
 if __name__ == '__main__':
-    print(scrape(ROOT_URI, CONCURRENCY))
+    ap = argparse.ArgumentParser(description='Scrape classutil')
+    ap.add_argument('output', action='store', help='output filename')
+    ap.add_argument('--root-uri', default=ROOT_URI, help='root uri')
+    ap.add_argument('--threads', default=CONCURRENCY, type=int, help='number of concurrent threads')
+    args = ap.parse_args()
+
+    with open(args.output, 'w') as f:
+        data = scrape(args.root_uri, args.threads)
+        f.write(json.dumps(data))
+

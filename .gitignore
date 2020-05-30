@@ -1,4 +1,6 @@
 __pycache__/
+dist/
+classutil.egg-info/
 venv/
 v/
 data/

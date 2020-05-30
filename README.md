@@ -13,6 +13,22 @@ virtualenv -p python3 venv
 
 pip3 install -r requirements.txt
 ```
+## Run
+```sh
+python scrape.py output.json
+```
 
-## Usage
-Just run the python script, and the database will be automatically created.
+The options are configurable, run with `--help` for more options.
+
+
+## Library Usage
+```py3
+from classutil import scrape
+
+# Scrape data
+# Arguments don't need to be specified as these are the defaults.
+data = scrape(
+	root="https://classutil.unsw.edu.au",
+	concurrency=1,
+	logging=False)
+```

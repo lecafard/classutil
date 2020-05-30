@@ -14,11 +14,12 @@ import argparse
 ROOT_URI = 'http://classutil.unsw.edu.au/'
 CONCURRENCY = 4
 
-def log(*message):
-    print(*message, file=sys.stderr)
+def log(*message, enabled=True):
+    if enabled:
+        print(*message, file=sys.stderr)
 
-def _scrape_subject(root, file):
-    log(f'Getting {file}')
+def _scrape_subject(root, file, logging=False):
+    log(f'Getting {file}', enabled=logging)
     courses = []
 
     req = requests.get(f'{ROOT_URI}{file}')
@@ -59,14 +60,14 @@ def _scrape_subject(root, file):
 
     return courses
 
-def scrape(root, concurrency):
+def scrape(root, concurrency=1, logging=False):
     r = requests.get(root)
     files = re.findall(r'[A-Z]{4}_[A-Z]\d\.html', r.text)
     correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', r.text).group(1).replace(' EST ',' AEST ')
     correct_dt = int(parser.parse(correct).timestamp())
     pool = ThreadPool(concurrency)
 
-    courses = pool.starmap(_scrape_subject, [(root, i) for i in files])
+    courses = pool.starmap(_scrape_subject, [(root, i, logging) for i in files])
     return {
         'courses': [i.toJSON() for i in reduce(lambda x, y: x + y, courses)],
         'correct_at': correct_dt
@@ -75,11 +76,12 @@ def scrape(root, concurrency):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Scrape classutil')
     ap.add_argument('output', action='store', help='output filename')
-    ap.add_argument('--root-uri', default=ROOT_URI, help='root uri')
-    ap.add_argument('--threads', default=CONCURRENCY, type=int, help='number of concurrent threads')
+    ap.add_argument('-r', '--root-uri', default=ROOT_URI, help='root uri')
+    ap.add_argument('-t', '--threads', default=CONCURRENCY, type=int, help='number of concurrent threads')
+    ap.add_argument('-q', '--quiet', action='store_true', default=False, help='quiet mode')
     args = ap.parse_args()
 
     with open(args.output, 'w') as f:
-        data = scrape(args.root_uri, args.threads)
+        data = scrape(args.root_uri, args.threads, not args.quiet)
         f.write(json.dumps(data))
 

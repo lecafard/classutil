@@ -62,7 +62,7 @@ def scrape(root=ROOT_URI, last_updated=0, concurrency=1, logging=False):
     r = requests.get(root)
     files = re.findall(r'[A-Z]{4}_[A-Z]\d\.html', r.text)
     correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', r.text).group(1).replace(' EST ',' AEST ')
-    correct_dt = int(parser.parse(correct).timestamp())
+    correct_dt = int(parser.parse(correct, tzinfos={"AEST": "UTC+10", "AEDT": "UTC+11"}).timestamp())
     if correct_dt == last_updated:
         return {
             'correct_at': correct_dt, 
@@ -78,4 +78,3 @@ def scrape(root=ROOT_URI, last_updated=0, concurrency=1, logging=False):
         'courses': [i.toJSON() for i in reduce(lambda x, y: x + y, courses)],
         'correct_at': correct_dt
     }
-

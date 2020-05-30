@@ -2,8 +2,7 @@ classutil scraper
 =================
 
 My attempt at a [classutil](http://classutil.unsw.edu.au). It downloads the current UNSW class
-allocations and puts it into a database (for easy querying). Not really sure what to do with
-this data yet.
+allocations into a JSON file.
 
 ## Installation
 ```bash

@@ -56,13 +56,18 @@ def _scrape_subject(root, filename, logging=False):
 
     return courses
 
-def scrape(root=ROOT_URI, concurrency=1, logging=False):
+def scrape(root=ROOT_URI, last_updated=0, concurrency=1, logging=False):
     if root[-1] != '/':
         root += '/'
     r = requests.get(root)
     files = re.findall(r'[A-Z]{4}_[A-Z]\d\.html', r.text)
     correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', r.text).group(1).replace(' EST ',' AEST ')
     correct_dt = int(parser.parse(correct).timestamp())
+    if correct_dt == last_updated:
+        return {
+            'correct_at': correct_dt, 
+            'courses': []
+        }
     if concurrency != 1:
         pool = ThreadPool(concurrency)
         courses = pool.starmap(_scrape_subject, [(root, i, logging) for i in files])

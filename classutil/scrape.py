@@ -46,8 +46,8 @@ def _scrape_subject(root, filename, logging=False):
             comp, sect, cid, typ, status, cap, _, times = map(lambda x: x.text.strip(), i.find_all('td'))
             res = re.search(r'(\d+)/(\d+)', cap)
             if res != None:
-                filled = res[1]
-                maximum = res[2]
+                filled = int(res[1])
+                maximum = int(res[2])
             else:
                 filled = 0
                 maximum = 0

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # Standalone scraping script
-from scrape import scrape, ROOT_URI
+from classutil.scrape import scrape, ROOT_URI
 import json
 import argparse
 

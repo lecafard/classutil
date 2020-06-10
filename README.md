@@ -14,7 +14,7 @@ pip3 install -r requirements.txt
 ```
 ## Run
 ```sh
-python scrape.py output.json
+python -m classutil output.json
 ```
 
 The options are configurable, run with `--help` for more options.

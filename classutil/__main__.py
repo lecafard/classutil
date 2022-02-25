@@ -3,6 +3,7 @@
 from classutil.scrape import scrape, ROOT_URI
 import json
 import argparse
+import logging
 
 CONCURRENCY = 4
 
@@ -14,6 +15,8 @@ ap.add_argument('-q', '--quiet', action='store_true', default=False, help='quiet
 args = ap.parse_args()
 
 with open(args.output, 'w') as f:
-    data = scrape(args.root_uri, args.threads, not args.quiet)
+    if not args.quiet:
+        logging.basicConfig(level=logging.INFO)
+    data = scrape(root=args.root_uri, last_updated=0, concurrency=args.threads)
     f.write(json.dumps(data))
 

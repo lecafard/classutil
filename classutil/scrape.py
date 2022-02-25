@@ -1,25 +1,18 @@
-import os
 import re
-import requests
+import asyncio
+import aiohttp
 from functools import reduce
 from bs4 import BeautifulSoup
 from classutil.data_types import Course, Component
 from dateutil import parser
-import sys
-from multiprocessing.pool import ThreadPool
+import logging
 
 ROOT_URI = 'http://classutil.unsw.edu.au/'
+logger = logging.getLogger('classutil.scrape')
 
-def log(*message, enabled=True):
-    if enabled:
-        print(*message, file=sys.stderr)
-
-def _scrape_subject(root, filename, logging=False):
-    log('Getting {}'.format(filename), enabled=logging)
+def _parse_subject(filename, data):
     courses = []
-
-    req = requests.get('{}{}'.format(root, filename))
-    soup = BeautifulSoup(req.text, features='html.parser')
+    soup = BeautifulSoup(data, features='html.parser')
 
     term = filename[-7:-5]
     year = int(soup.find('title').text.split()[2])
@@ -56,23 +49,36 @@ def _scrape_subject(root, filename, logging=False):
 
     return courses
 
-def scrape(root=ROOT_URI, last_updated=0, concurrency=1, logging=False):
+async def _scrape_subject(client: aiohttp.ClientSession, root, filename):
+    async with client.get('{}{}'.format(root, filename)) as resp:
+        logger.info('Retrieved %s', filename)
+        return _parse_subject(filename, await resp.text())
+
+def scrape(root=ROOT_URI, last_updated=0, concurrency=8):
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(scrape_async(root, last_updated, concurrency))
+    return result
+
+async def scrape_async(root=ROOT_URI, last_updated=0, concurrency=8):
+    logger.info('Creating scraper with root=%s, last_updated=%s and concurrency=%s', root, last_updated, concurrency)
+    connector = aiohttp.TCPConnector(limit=concurrency)
+    client = aiohttp.ClientSession(connector=connector)
     if root[-1] != '/':
         root += '/'
-    r = requests.get(root)
-    files = re.findall(r'[A-Z]{4}_[A-Z]\d\.html', r.text)
-    correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', r.text).group(1).replace(' EST ',' AEST ')
-    correct_dt = int(parser.parse(correct, tzinfos={"AEST": "UTC+10", "AEDT": "UTC+11"}).timestamp())
-    if correct_dt == last_updated:
-        return {
-            'correct_at': correct_dt, 
-            'courses': []
-        }
-    if concurrency != 1:
-        pool = ThreadPool(concurrency)
-        courses = pool.starmap(_scrape_subject, [(root, i, logging) for i in files])
-    else:
-        courses = [_scrape_subject(root, i, logging) for i in files]
+    async with client.get(root) as resp:
+        data = await resp.text()
+        files = re.findall(r'[A-Z]{4}_[A-Z]\d\.html', data)
+        correct = re.search('correct as at <(?:b|strong)>(.*)</(?:b|strong)>', data).group(1).replace(' EST ',' AEST ')
+        correct_dt = int(parser.parse(correct, tzinfos={"AEST": "UTC+10", "AEDT": "UTC+11"}).timestamp())
+        if correct_dt == last_updated:
+            await client.close()
+            return {
+                'correct_at': correct_dt, 
+                'courses': []
+            }
+
+    courses = await asyncio.gather(*[_scrape_subject(client, root, i) for i in files])
+    await client.close()
 
     return {
         'courses': [i.toJSON() for i in reduce(lambda x, y: x + y, courses)],

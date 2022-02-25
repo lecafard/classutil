@@ -10,7 +10,7 @@ README = (HERE / "README.md").read_text()
 # This call to setup() does all the work
 setup(
     name="classutil",
-    version="1.0.6",
+    version="2.0.2",
     description="Classutil scraper for UNSW.",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -25,7 +25,7 @@ setup(
     packages=["classutil"],
     keywords="unsw classutil scraper",
     include_package_data=True,
-    install_requires=["requests", "python-dateutil", "beautifulsoup4"],
+    install_requires=["aiohttp", "python-dateutil", "beautifulsoup4"],
     python_requires=">=3"
 )
 

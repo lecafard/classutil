@@ -1,2 +1,2 @@
-from classutil.scrape import scrape, ROOT_URI
+from classutil.scrape import scrape, scrape_async, ROOT_URI
 

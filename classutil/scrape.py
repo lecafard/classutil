@@ -55,9 +55,7 @@ async def _scrape_subject(client: aiohttp.ClientSession, root, filename):
         return _parse_subject(filename, await resp.text())
 
 def scrape(root=ROOT_URI, last_updated=0, concurrency=8):
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(scrape_async(root, last_updated, concurrency))
-    return result
+    return asyncio.run(scrape_async(root, last_updated, concurrency))
 
 async def scrape_async(root=ROOT_URI, last_updated=0, concurrency=8):
     logger.info('Creating scraper with root=%s, last_updated=%s and concurrency=%s', root, last_updated, concurrency)
